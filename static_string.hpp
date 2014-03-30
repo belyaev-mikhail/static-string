@@ -10,7 +10,7 @@ struct static_string {
         return output;
     }
 
-    constexpr size_t size() { 
+    constexpr size_t size() const { 
         return length; 
     }
 
