@@ -76,3 +76,20 @@ struct tl_append< type_list<LElems...>, type_list<RElems...> > {
 };
 template<class LTL, class RTL>
 using tl_append_t = typename tl_append<LTL, RTL>::type;
+
+template<class TL> struct tl_head;
+template<class H, class ...T>
+struct tl_head<type_list<H, T...>> {
+    using type = H;
+};
+template<class TL> 
+using tl_head_t = typename tl_head<TL>::type;
+
+template<class TL> struct tl_tail;
+template<class H, class ...T>
+struct tl_tail<type_list<H, T...>> {
+    using type = type_list<T...>;
+};
+template<class TL> 
+using tl_tail_t = typename tl_tail<TL>::type;
+

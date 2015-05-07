@@ -139,10 +139,15 @@ using lispFromTokens = eval< lisper<Tokens, type_list<>, type_list<>> >;
 template<class SS>
 using lispIt = lispFromTokens< tokenize<SS> >;
 
+template<class...>
+struct error_type {};
+
+struct env_begin{};
+struct env_end{};
 
 template<class Env, class SS, class SFINAE = void>
 struct template_lisp_traits {
-    using type = nulltype;
+    using type = error_type<env_begin, Env, env_end, SS>;
 };
 
 #define MAKE_AVAILABLE_TO_LISPER(TYPE) \
@@ -259,13 +264,13 @@ struct template_lisp_traits<Env, static_string<Digits...>, std::enable_if_t<(siz
 };
 
 template<class Env>
-struct template_lisp_traits<Env, STATIC_STRING("#t")>
+struct template_lisp_traits<Env, STATIC_STRING("true")>
 {
     using type = std::true_type;
 };
 
 template<class Env>
-struct template_lisp_traits<Env, STATIC_STRING("#f")>
+struct template_lisp_traits<Env, STATIC_STRING("false")>
 {
     using type = std::false_type;
 };
@@ -384,28 +389,57 @@ struct template_lisp_traits<Env, STATIC_STRING("type")> {
     using type = typetype;
 };
 
+template<class T> struct quoted{};
+
+template<class Q> struct unquote {
+    using type = Q;
+};
+template<class Q> struct unquote<quoted<Q>> {
+    using type = Q;
+};
+template<class Q>
+using unquote_t = typename unquote<Q>::type;
+
 template<class Env, char... SymName>
 struct template_lisp_traits<Env, static_string<'$', SymName...>> {
-    using type = static_string<SymName...>;
+    using type = quoted<static_string<SymName...>>;
 };
 
 
 template<class Env, class Arg, class ...Rest>
 struct template_lisp_traits<Env, type_list<STATIC_STRING("quote"), Arg, Rest...>> {
     static_assert(sizeof...(Rest) == 0, "illegal quote: too many arguments");
-    using type = Arg;
+    using type = quoted<Arg>;
 };
 
 template<class Env, class Body, class ...Rest>
 struct template_lisp_traits<Env, type_list<STATIC_STRING("eval"), Body, Rest...>> {
     static_assert(sizeof...(Rest) == 0, "illegal eval: too many arguments");
     using newEnv = type_list<>;
-    using type = resolve_type<newEnv, resolve_type<Env, Body>>;
+    using type = resolve_type<newEnv, resolve_type<Env, unquote_t<Body>>>;
 };
 
 template<class Env, class ...Args>
 struct template_lisp_traits<Env, type_list<STATIC_STRING("list"), Args...>> {
-    using type = type_list<resolve_type<Env, Args>...>;
+    using type = quoted<type_list<resolve_type<Env, Args>...>>;
+};
+
+template<class Env, class Arg, class ...Rest>
+struct template_lisp_traits<Env, type_list<STATIC_STRING("car"), Arg, Rest...>> {
+    static_assert(sizeof...(Rest) == 0, "illegal car: too many arguments");
+    using type = quoted<tl_head_t<unquote_t<resolve_type<Env, Arg>>>>;
+};
+
+template<class Env, class Arg, class ...Rest>
+struct template_lisp_traits<Env, type_list<STATIC_STRING("cdr"), Arg, Rest...>> {
+    static_assert(sizeof...(Rest) == 0, "illegal cdr: too many arguments");
+    using type = quoted<tl_tail_t<unquote_t<resolve_type<Env, Arg>>>>;
+};
+
+template<class Env, class HArg, class TArg, class ...Rest>
+struct template_lisp_traits<Env, type_list<STATIC_STRING("cons"), HArg, TArg, Rest...>> {
+    static_assert(sizeof...(Rest) == 0, "illegal cons: too many arguments");
+    using type = quoted<tl_cons_t<unquote_t<resolve_type<Env, HArg>>, unquote_t<resolve_type<Env, TArg>>>>;
 };
 
 template<class Env, char... Name, class Value, class Body, class ...Rest>
@@ -442,6 +476,11 @@ struct lambda<type_list<Args...>, Body, Env> {
 template<class Env, class Args, class Body, class InnerEnv>
 struct template_lisp_traits<Env, lambda<Args, Body, InnerEnv>> {
     using type = lambda<Args, Body, InnerEnv>;
+};
+
+template<class Env, class T>
+struct template_lisp_traits<Env, quoted<T>> {
+    using type = quoted<T>;
 };
 
 template<class Env, class Body, class ...Args, class ...Rest>

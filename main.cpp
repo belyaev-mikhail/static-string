@@ -22,6 +22,14 @@ std::string typesig() {
 
 #define PRINT_RES(...) std::cerr << typesig< EVAL(__VA_ARGS__) > () << std::endl;
 
+template<class Env>
+struct template_lisp_traits<Env, STATIC_STRING("length")>
+{
+    using type = 
+        EVAL(letrec (length_ (lambda (lst) (ite (== lst (list)) 0 (+ 1 (apply length_ (cdr lst)))))) length_);
+};
+
+
 int main() {
     using hello = STATIC_STRING("hello world");
     std::cerr << hello() << std::endl;
@@ -88,4 +96,12 @@ int main() {
     PRINT_RES(
         letrec (f (lambda (x) (ite (== x 0) 1 (* x (apply f (- x 1)))))) (apply f 9)
     )
+
+    PRINT_RES(
+        let (hasonly1 (lambda (lst) (== (cdr lst) (list))))
+        (apply hasonly1 (list 1 2 3 4))
+    )
+
+    PRINT_RES(apply length (list 1 2 3 4))
+
 }
