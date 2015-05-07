@@ -26,7 +26,14 @@ template<class Env>
 struct template_lisp_traits<Env, STATIC_STRING("length")>
 {
     using type = 
-        EVAL(letrec (length_ (lambda (lst) (ite (== lst (list)) 0 (+ 1 (apply length_ (cdr lst)))))) length_);
+        EVAL(letrec (l_ (\\ (lst) (ite (= lst nil) 0 (+ 1 (apply l_ (cdr lst)))))) l_);
+};
+
+template<class Env>
+struct template_lisp_traits<Env, STATIC_STRING("map")>
+{
+    using type = 
+        EVAL(letrec (m_ (\\ (f lst) (ite (= lst nil) nil (cons (apply f (car lst)) (apply m_ f (cdr lst)))))) m_);
 };
 
 
@@ -102,6 +109,6 @@ int main() {
         (apply hasonly1 (list 1 2 3 4))
     )
 
-    PRINT_RES(apply length (list 1 2 3 4))
+    PRINT_RES(apply map (lambda (x) (+ x 1)) (list 1 2 3 4))
 
 }

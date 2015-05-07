@@ -336,6 +336,10 @@ template<class Env, class ...Args>
 struct template_lisp_traits<Env, type_list<STATIC_STRING("=="), Args...>> {
     using type = std::integral_constant<bool, is_same_multiple<resolve_type<Env, Args>...>::value >;
 };
+template<class Env, class ...Args>
+struct template_lisp_traits<Env, type_list<STATIC_STRING("="), Args...>> {
+    using type = std::integral_constant<bool, is_same_multiple<resolve_type<Env, Args>...>::value >;
+};
 
 template<class Env, class ...Args>
 struct template_lisp_traits<Env, type_list<STATIC_STRING("tuple_size"), Args...>> {
@@ -405,6 +409,11 @@ struct template_lisp_traits<Env, static_string<'$', SymName...>> {
     using type = quoted<static_string<SymName...>>;
 };
 
+template<class Env>
+struct template_lisp_traits<Env, STATIC_STRING("nil")>
+{
+    using type = quoted<type_list<>>;
+};
 
 template<class Env, class Arg, class ...Rest>
 struct template_lisp_traits<Env, type_list<STATIC_STRING("quote"), Arg, Rest...>> {
@@ -427,7 +436,7 @@ struct template_lisp_traits<Env, type_list<STATIC_STRING("list"), Args...>> {
 template<class Env, class Arg, class ...Rest>
 struct template_lisp_traits<Env, type_list<STATIC_STRING("car"), Arg, Rest...>> {
     static_assert(sizeof...(Rest) == 0, "illegal car: too many arguments");
-    using type = quoted<tl_head_t<unquote_t<resolve_type<Env, Arg>>>>;
+    using type = tl_head_t<unquote_t<resolve_type<Env, Arg>>>;
 };
 
 template<class Env, class Arg, class ...Rest>
@@ -485,6 +494,13 @@ struct template_lisp_traits<Env, quoted<T>> {
 
 template<class Env, class Body, class ...Args, class ...Rest>
 struct template_lisp_traits<Env, type_list<STATIC_STRING("lambda"), type_list<Args...>, Body, Rest...>> {
+    static_assert(sizeof...(Rest) == 0, "illegal lambda: too many arguments");
+
+    using type = lambda<type_list<Args...>, Body, Env>;
+};
+
+template<class Env, class Body, class ...Args, class ...Rest>
+struct template_lisp_traits<Env, type_list<STATIC_STRING("\\"), type_list<Args...>, Body, Rest...>> {
     static_assert(sizeof...(Rest) == 0, "illegal lambda: too many arguments");
 
     using type = lambda<type_list<Args...>, Body, Env>;
