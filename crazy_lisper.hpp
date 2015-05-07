@@ -283,6 +283,19 @@ struct template_lisp_traits<Env, type_list<STATIC_STRING("+"), Args...>> {
     using type = std::integral_constant<long, sum<resolve_type<Env, Args>::value...>::value >;
 };
 
+template<long... s> struct product;
+template<> struct product<>{ static constexpr long value = 1; };
+template<long HVal, long ...TVals> struct product<HVal, TVals...>
+{
+    static constexpr long value = HVal * product<TVals...>::value; 
+};
+
+
+template<class Env, class ...Args>
+struct template_lisp_traits<Env, type_list<STATIC_STRING("*"), Args...>> {
+    using type = std::integral_constant<long, product<resolve_type<Env, Args>::value...>::value >;
+};
+
 template<class Env, class Arg>
 struct template_lisp_traits<Env, type_list<STATIC_STRING("-"), Arg>> {
     using type = std::integral_constant<long, -resolve_type<Env, Arg>::value >;
@@ -377,6 +390,12 @@ struct template_lisp_traits<Env, static_string<'$', SymName...>> {
 };
 
 
+template<class Env, class Arg, class ...Rest>
+struct template_lisp_traits<Env, type_list<STATIC_STRING("quote"), Arg, Rest...>> {
+    static_assert(sizeof...(Rest) == 0, "illegal quote: too many arguments");
+    using type = Arg;
+};
+
 template<class Env, class Body, class ...Rest>
 struct template_lisp_traits<Env, type_list<STATIC_STRING("eval"), Body, Rest...>> {
     static_assert(sizeof...(Rest) == 0, "illegal eval: too many arguments");
@@ -392,7 +411,7 @@ struct template_lisp_traits<Env, type_list<STATIC_STRING("list"), Args...>> {
 template<class Env, char... Name, class Value, class Body, class ...Rest>
 struct template_lisp_traits<Env, type_list<STATIC_STRING("let"), type_list<static_string<Name...>, Value>, Body, Rest...>> {
     static_assert(sizeof...(Rest) == 0, "illegal let: too many arguments");
-    using newEnv = tl_cons_t< std::pair<static_string<Name...>, Value>, Env >;
+    using newEnv = tl_cons_t< std::pair<static_string<Name...>, resolve_type<Env, Value>>, Env >;
     using type = resolve_type<newEnv, Body>;
 };
 
@@ -400,7 +419,7 @@ struct template_lisp_traits<Env, type_list<STATIC_STRING("let"), type_list<stati
 template<class Env, char... Name, class Value, class ...TBindings, class Body, class ...Rest>
 struct template_lisp_traits<Env, type_list<STATIC_STRING("let"), type_list<type_list<static_string<Name...>, Value>, TBindings...>, Body, Rest...>> {
     static_assert(sizeof...(Rest) == 0, "illegal let: too many arguments");
-    using newEnv = tl_cons_t< std::pair<static_string<Name...>, Value>, Env >;
+    using newEnv = tl_cons_t< std::pair<static_string<Name...>, resolve_type<Env, Value>>, Env >;
     using progress = template_lisp_traits<newEnv, type_list<STATIC_STRING("let"), type_list<TBindings...>, Body, Rest...>>;
     using type = typename progress::type;
 };
@@ -412,19 +431,39 @@ struct template_lisp_traits<Env, type_list<STATIC_STRING("let"), type_list<>, Bo
 };
 
 
-template<class Env, class Body, class ...Args, class ...Rest>
-struct template_lisp_traits<Env, type_list<STATIC_STRING("lambda"), type_list<Args...>, Body, Rest...>> {
-    static_assert(sizeof...(Rest) == 0, "illegal let: too many arguments");
-
+template<class Args, class Body, class Env>
+struct lambda;
+template<class ...Args, class Body, class Env>
+struct lambda<type_list<Args...>, Body, Env> {
     template<class ...RArgs>
     using apply = resolve_type< tl_append_t< tl_zip_t<type_list<Args...>, type_list<RArgs...>>, Env >, Body>;
-
-    using type = template_lisp_traits;
 };
+
+template<class Env, class Args, class Body, class InnerEnv>
+struct template_lisp_traits<Env, lambda<Args, Body, InnerEnv>> {
+    using type = lambda<Args, Body, InnerEnv>;
+};
+
+template<class Env, class Body, class ...Args, class ...Rest>
+struct template_lisp_traits<Env, type_list<STATIC_STRING("lambda"), type_list<Args...>, Body, Rest...>> {
+    static_assert(sizeof...(Rest) == 0, "illegal lambda: too many arguments");
+
+    using type = lambda<type_list<Args...>, Body, Env>;
+};
+
+template<class Env, char... Name, class Value, class Body, class ...Rest>
+struct template_lisp_traits<Env, type_list<STATIC_STRING("letrec"), type_list<static_string<Name...>, Value>, Body, Rest...>> {
+    static_assert(sizeof...(Rest) == 0, "illegal letrec: too many arguments");
+    using recEnv = tl_cons_t< std::pair<static_string<Name...>, Value>, Env >;
+    using newEnv = tl_cons_t< std::pair<static_string<Name...>, resolve_type<recEnv, Value>>, recEnv >;
+    using type = resolve_type<newEnv, Body>;
+};
+
 
 template<class Env, class Fun, class ...Rest>
 struct template_lisp_traits<Env, type_list<STATIC_STRING("apply"), Fun, Rest...>> {
-    using type = typename resolve_type<Env, Fun>::template apply<Rest...>;
+    using lam = resolve_type<Env, Fun>;
+    using type = typename lam::template apply<resolve_type<Env, Rest>...>;
 };
 
 

@@ -64,7 +64,9 @@ int main() {
 
     PRINT_RES(id $x)
     PRINT_RES(eval $23)
+    PRINT_RES(quote (+ 2 3 x))
     PRINT_RES(eval (list $eval (list $+ 2 3)))
+    PRINT_RES(eval (list $eval (quote (+ 2 3))))
     PRINT_RES(apply (lambda (x y) (+ x y)) 2 3)
 
     PRINT_RES(let ((plus (lambda (x y) (+ x y))) (z 5)) (apply plus 2 z))
@@ -78,8 +80,12 @@ int main() {
         let (f (lambda (x) (ite (== x 0) 1 x))) (apply f 4)
     )
 
-    // PRINT_RES(
-    //     let (x 2) (let (x x) x)
-    // ) should be 2, does not work yet
+    PRINT_RES(
+        let (x 2) (let (x x) x)
+    )
 
+
+    PRINT_RES(
+        letrec (f (lambda (x) (ite (== x 0) 1 (* x (apply f (- x 1)))))) (apply f 9)
+    )
 }
