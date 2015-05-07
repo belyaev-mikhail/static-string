@@ -53,3 +53,26 @@ struct tl_lookup< type_list<std::pair<HK, HV>, T...>, Key > {
     using type = typename tl_lookup<type_list<T...>, Key>::type;
 };
 template<class TL, class Key> using tl_lookup_t = typename tl_lookup<TL, Key>::type;
+
+template<class LTL, class RTL> struct tl_zip;
+template<> struct tl_zip<type_list<>, type_list<>> {
+    using type = type_list<>;  
+};
+template<class LH, class RH, class ...LT, class ...RT>
+struct tl_zip< type_list<LH, LT...>, type_list<RH, RT...> > {
+    static_assert(sizeof...(LT) == sizeof...(RT), "Zipping type lists of different sizes");
+
+    using progress = typename tl_zip< type_list<LT...>, type_list<RT...> >::type;
+    using type = tl_cons_t< std::pair<LH, RH>, progress >;
+};
+template<class LTL, class RTL>
+using tl_zip_t = typename tl_zip<LTL, RTL>::type;
+
+
+template<class LTL, class RTL> struct tl_append;
+template<class ...LElems, class ...RElems>
+struct tl_append< type_list<LElems...>, type_list<RElems...> > {
+    using type = type_list<LElems..., RElems...>;
+};
+template<class LTL, class RTL>
+using tl_append_t = typename tl_append<LTL, RTL>::type;

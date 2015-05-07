@@ -140,11 +140,13 @@ template<class SS>
 using lispIt = lispFromTokens< tokenize<SS> >;
 
 
-template<class SS, class SFINAE = void>
-struct template_lisp_traits;
+template<class Env, class SS, class SFINAE = void>
+struct template_lisp_traits {
+    using type = nulltype;
+};
 
 #define MAKE_AVAILABLE_TO_LISPER(TYPE) \
-template<> struct template_lisp_traits<STATIC_STRING(#TYPE)> \
+template<class Env> struct template_lisp_traits<Env, STATIC_STRING(#TYPE)> \
 { \
     using type = TYPE; \
 }; \
@@ -184,39 +186,52 @@ MAKE_AVAILABLE_TO_LISPER(size_t);
 MAKE_AVAILABLE_TO_LISPER(intptr_t);
 MAKE_AVAILABLE_TO_LISPER(uintptr_t);
 
-#define NAMED_TYPE(NAME) typename template_lisp_traits<STATIC_STRING(NAME)>::type
+#define NAMED_TYPE(NAME) typename template_lisp_traits<type_list<>, STATIC_STRING(NAME)>::type
 
-template<class SS>
-using resolve_type = typename template_lisp_traits<SS>::type;
-
-template<class EnvMap, class K>
-struct env_lookup {
-    using val = tl_lookup_t<EnvMap, K>;
-    using type = 
-        std::conditional<
-            std::is_same<val, nulltype>::value, 
-            resolve_type<K>, 
-            val
-        >;
+template<class Env, class SS>
+struct type_resolver {
+    using type = typename template_lisp_traits<Env, SS>::type;
 };
 
-template<class EnvMap, class K> using env_lookup_t = typename env_lookup<EnvMap, K>::type;
-
-template<class ...Args>
-struct template_lisp_traits<type_list<STATIC_STRING("tuple"), Args...>> {
-    using type = std::tuple< resolve_type<Args>... >;
+template<class Env>
+struct type_resolver<Env, nulltype> {
+    using type = nulltype;
 };
 
-template<class ...Args>
-struct template_lisp_traits<type_list<STATIC_STRING("pair"), Args...>> {
+template<class Env, class V, V v>
+struct type_resolver<Env, std::integral_constant<V, v>> {
+    using type = std::integral_constant<V, v>;
+};
+
+template<class Env, char ...Name>
+struct type_resolver<Env, static_string<Name...>> {
+    using SS = static_string<Name...>;
+    using lookup = tl_lookup_t<Env, SS>;
+    using type = std::conditional_t< 
+        std::is_same<lookup, nulltype>::value, 
+        typename template_lisp_traits<Env, SS>::type,
+        typename type_resolver<Env, lookup>::type
+     >;
+};
+
+template<class Env, class SS>
+using resolve_type = typename type_resolver<Env, SS>::type;
+
+template<class Env, class ...Args>
+struct template_lisp_traits<Env, type_list<STATIC_STRING("tuple"), Args...>> {
+    using type = std::tuple< resolve_type<Env, Args>... >;
+};
+
+template<class Env, class ...Args>
+struct template_lisp_traits<Env, type_list<STATIC_STRING("pair"), Args...>> {
     static_assert(sizeof...(Args) == 2, "A pair expects two parameters!");
-    using type = std::pair< resolve_type<Args>... >;
+    using type = std::pair< resolve_type<Env, Args>... >;
 };
 
-template<class ...Args>
-struct template_lisp_traits<type_list<STATIC_STRING("vector"), Args...>> {
+template<class Env, class ...Args>
+struct template_lisp_traits<Env, type_list<STATIC_STRING("vector"), Args...>> {
     static_assert(sizeof...(Args) == 2, "A pair expects one parameter!");
-    using type = std::vector< resolve_type<Args>... >;
+    using type = std::vector< resolve_type<Env, Args>... >;
 };
 
 template<char... s> struct is_number;
@@ -237,20 +252,20 @@ template<char HChar, char ...TChars> struct to_number<HChar, TChars...>
     enum { value = (HChar - '0') * progress::score + progress::value, score = progress::score * 10 };
 };
 
-template<char ... Digits>
-struct template_lisp_traits<static_string<Digits...>, std::enable_if_t<(sizeof...(Digits) > 0) && is_number<Digits...>::value > > {
+template<class Env, char ... Digits>
+struct template_lisp_traits<Env, static_string<Digits...>, std::enable_if_t<(sizeof...(Digits) > 0) && is_number<Digits...>::value > > {
     enum{ value = to_number<Digits...>::value  };
     using type = std::integral_constant<long, value>;
 };
 
-template<>
-struct template_lisp_traits<STATIC_STRING("#t")>
+template<class Env>
+struct template_lisp_traits<Env, STATIC_STRING("#t")>
 {
     using type = std::true_type;
 };
 
-template<>
-struct template_lisp_traits<STATIC_STRING("#f")>
+template<class Env>
+struct template_lisp_traits<Env, STATIC_STRING("#f")>
 {
     using type = std::false_type;
 };
@@ -263,23 +278,23 @@ template<long HVal, long ...TVals> struct sum<HVal, TVals...>
 };
 
 
-template<class ...Args>
-struct template_lisp_traits<type_list<STATIC_STRING("+"), Args...>> {
-    using type = std::integral_constant<long, sum<resolve_type<Args>::value...>::value >;
+template<class Env, class ...Args>
+struct template_lisp_traits<Env, type_list<STATIC_STRING("+"), Args...>> {
+    using type = std::integral_constant<long, sum<resolve_type<Env, Args>::value...>::value >;
 };
 
-template<class Arg>
-struct template_lisp_traits<type_list<STATIC_STRING("-"), Arg>> {
-    using type = std::integral_constant<long, -resolve_type<Arg>::value >;
+template<class Env, class Arg>
+struct template_lisp_traits<Env, type_list<STATIC_STRING("-"), Arg>> {
+    using type = std::integral_constant<long, -resolve_type<Env, Arg>::value >;
 };
 
-template<class Lhv, class Rhv>
-struct template_lisp_traits<type_list<STATIC_STRING("-"), Lhv, Rhv>> {
-    using type = std::integral_constant<long, resolve_type<Lhv>::value - resolve_type<Rhv>::value >;
+template<class Env, class Lhv, class Rhv>
+struct template_lisp_traits<Env, type_list<STATIC_STRING("-"), Lhv, Rhv>> {
+    using type = std::integral_constant<long, resolve_type<Env, Lhv>::value - resolve_type<Env, Rhv>::value >;
 };
 
-template<class Lhv, class Rhv, class Whatever, class...Rest>
-struct template_lisp_traits<type_list<STATIC_STRING("-"), Lhv, Rhv, Whatever, Rest...>> {
+template<class Env, class Lhv, class Rhv, class Whatever, class...Rest>
+struct template_lisp_traits<Env, type_list<STATIC_STRING("-"), Lhv, Rhv, Whatever, Rest...>> {
     static_assert(sizeof(Lhv) == 0, "Subtraction operator expects one or two arguments");
     using type = void;
 };
@@ -299,40 +314,40 @@ struct  is_same_multiple<First, First, Rest...> {
 template<class First, class Second, class ...Rest> 
 struct  is_same_multiple<First, Second, Rest...> : std::false_type {};
 
-template<class ...Args>
-struct template_lisp_traits<type_list<STATIC_STRING("=="), Args...>> {
-    using type = std::integral_constant<bool, is_same_multiple<resolve_type<Args>...>::value >;
+template<class Env, class ...Args>
+struct template_lisp_traits<Env, type_list<STATIC_STRING("=="), Args...>> {
+    using type = std::integral_constant<bool, is_same_multiple<resolve_type<Env, Args>...>::value >;
 };
 
-template<class ...Args>
-struct template_lisp_traits<type_list<STATIC_STRING("tuple_size"), Args...>> {
+template<class Env, class ...Args>
+struct template_lisp_traits<Env, type_list<STATIC_STRING("tuple_size"), Args...>> {
     static_assert(sizeof...(Args) == 1, "tuple_size expects 1 parameter");
-    using type = std::integral_constant<long, std::tuple_size<resolve_type<Args>...>::value>;
+    using type = std::integral_constant<long, std::tuple_size<resolve_type<Env, Args>...>::value>;
 };
 
 
-template<bool cnd, class Left, class Right>
+template<class Env, bool cnd, class Left, class Right>
 struct selector;
-template<class Left, class Right>
-struct selector<true, Left, Right> { using type = resolve_type<Left>; };
-template<class Left, class Right>
-struct selector<false, Left, Right> { using type = resolve_type<Right>; };
+template<class Env, class Left, class Right>
+struct selector<Env, true, Left, Right> { using type = resolve_type<Env, Left>; };
+template<class Env, class Left, class Right>
+struct selector<Env, false, Left, Right> { using type = resolve_type<Env, Right>; };
 
-template<class Cond, class Left, class Right, class...Rest>
-struct template_lisp_traits<type_list<STATIC_STRING("ite"), Cond, Left, Right, Rest...>> {
+template<class Env, class Cond, class Left, class Right, class...Rest>
+struct template_lisp_traits<Env, type_list<STATIC_STRING("ite"), Cond, Left, Right, Rest...>> {
     static_assert(sizeof...(Rest) == 0, "ite takes exactly 3 parameters");
-    using type = typename selector<resolve_type<Cond>::value, Left, Right>::type;
+    using type = typename selector<Env, resolve_type<Env, Cond>::value, Left, Right>::type;
 };
 
-template<>
-struct template_lisp_traits<STATIC_STRING("null")> {
+template<class Env>
+struct template_lisp_traits<Env, STATIC_STRING("null")> {
     using type = nulltype;
 };
 
-template<class Arg, class ...Args>
-struct template_lisp_traits<type_list<STATIC_STRING("id"), Arg, Args...>> {
+template<class Env, class Arg, class ...Args>
+struct template_lisp_traits<Env, type_list<STATIC_STRING("id"), Arg, Args...>> {
     static_assert(sizeof...(Args) == 0, "tuple_size expects 1 parameter");
-    using type = resolve_type<Arg>;
+    using type = resolve_type<Env, Arg>;
 };
 
 struct typetype {};
@@ -346,12 +361,70 @@ template<class V, V v> struct is_integral_constant<std::integral_constant<V, v>>
     using type = V;
 };
 
-template<class V>
-struct template_lisp_traits<type_list<STATIC_STRING("typeof"), V>> {
-    using type = typename is_integral_constant<resolve_type<V>>::type;
+template<class Env, class V>
+struct template_lisp_traits<Env, type_list<STATIC_STRING("typeof"), V>> {
+    using type = typename is_integral_constant<resolve_type<Env, V>>::type;
 };
 
-template<>
-struct template_lisp_traits<STATIC_STRING("type")> {
+template<class Env>
+struct template_lisp_traits<Env, STATIC_STRING("type")> {
     using type = typetype;
 };
+
+template<class Env, char... SymName>
+struct template_lisp_traits<Env, static_string<'$', SymName...>> {
+    using type = static_string<SymName...>;
+};
+
+
+template<class Env, class Body, class ...Rest>
+struct template_lisp_traits<Env, type_list<STATIC_STRING("eval"), Body, Rest...>> {
+    static_assert(sizeof...(Rest) == 0, "illegal eval: too many arguments");
+    using newEnv = type_list<>;
+    using type = resolve_type<newEnv, resolve_type<Env, Body>>;
+};
+
+template<class Env, class ...Args>
+struct template_lisp_traits<Env, type_list<STATIC_STRING("list"), Args...>> {
+    using type = type_list<resolve_type<Env, Args>...>;
+};
+
+template<class Env, char... Name, class Value, class Body, class ...Rest>
+struct template_lisp_traits<Env, type_list<STATIC_STRING("let"), type_list<static_string<Name...>, Value>, Body, Rest...>> {
+    static_assert(sizeof...(Rest) == 0, "illegal let: too many arguments");
+    using newEnv = tl_cons_t< std::pair<static_string<Name...>, Value>, Env >;
+    using type = resolve_type<newEnv, Body>;
+};
+
+
+template<class Env, char... Name, class Value, class ...TBindings, class Body, class ...Rest>
+struct template_lisp_traits<Env, type_list<STATIC_STRING("let"), type_list<type_list<static_string<Name...>, Value>, TBindings...>, Body, Rest...>> {
+    static_assert(sizeof...(Rest) == 0, "illegal let: too many arguments");
+    using newEnv = tl_cons_t< std::pair<static_string<Name...>, Value>, Env >;
+    using progress = template_lisp_traits<newEnv, type_list<STATIC_STRING("let"), type_list<TBindings...>, Body, Rest...>>;
+    using type = typename progress::type;
+};
+
+template<class Env, class Body, class ...Rest>
+struct template_lisp_traits<Env, type_list<STATIC_STRING("let"), type_list<>, Body, Rest...>> {
+    static_assert(sizeof...(Rest) == 0, "illegal let: too many arguments");
+    using type = resolve_type<Env, Body>;
+};
+
+
+template<class Env, class Body, class ...Args, class ...Rest>
+struct template_lisp_traits<Env, type_list<STATIC_STRING("lambda"), type_list<Args...>, Body, Rest...>> {
+    static_assert(sizeof...(Rest) == 0, "illegal let: too many arguments");
+
+    template<class ...RArgs>
+    using apply = resolve_type< tl_append_t< tl_zip_t<type_list<Args...>, type_list<RArgs...>>, Env >, Body>;
+
+    using type = template_lisp_traits;
+};
+
+template<class Env, class Fun, class ...Rest>
+struct template_lisp_traits<Env, type_list<STATIC_STRING("apply"), Fun, Rest...>> {
+    using type = typename resolve_type<Env, Fun>::template apply<Rest...>;
+};
+
+
