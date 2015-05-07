@@ -48,6 +48,11 @@ using ss_push_front_t = typename ss_push_front<C, SS>::type;
 template<class SS>
 struct ss_truncate;
 
+template<>
+struct ss_truncate< static_string<> > {
+    using type = static_string<>;
+};
+
 template<char... contents>
 struct ss_truncate< static_string<'\0', contents...> > {
     using type = static_string<>;
@@ -99,16 +104,6 @@ using ss_make_string = ss_truncate_t< static_string< Args... > >;
     impl_::ss_at((__VA_ARGS__), 27U), \
     impl_::ss_at((__VA_ARGS__), 28U), \
     impl_::ss_at((__VA_ARGS__), 29U), \
-    impl_::ss_at((__VA_ARGS__), 20U), \
-    impl_::ss_at((__VA_ARGS__), 21U), \
-    impl_::ss_at((__VA_ARGS__), 22U), \
-    impl_::ss_at((__VA_ARGS__), 23U), \
-    impl_::ss_at((__VA_ARGS__), 24U), \
-    impl_::ss_at((__VA_ARGS__), 25U), \
-    impl_::ss_at((__VA_ARGS__), 26U), \
-    impl_::ss_at((__VA_ARGS__), 27U), \
-    impl_::ss_at((__VA_ARGS__), 28U), \
-    impl_::ss_at((__VA_ARGS__), 29U), \
     impl_::ss_at((__VA_ARGS__), 30U), \
     impl_::ss_at((__VA_ARGS__), 31U), \
     impl_::ss_at((__VA_ARGS__), 32U), \
@@ -119,14 +114,65 @@ using ss_make_string = ss_truncate_t< static_string< Args... > >;
     impl_::ss_at((__VA_ARGS__), 37U), \
     impl_::ss_at((__VA_ARGS__), 38U), \
     impl_::ss_at((__VA_ARGS__), 39U), \
-    impl_::ss_at((__VA_ARGS__), 30U), \
-    impl_::ss_at((__VA_ARGS__), 31U), \
-    impl_::ss_at((__VA_ARGS__), 32U), \
-    impl_::ss_at((__VA_ARGS__), 33U), \
-    impl_::ss_at((__VA_ARGS__), 34U), \
-    impl_::ss_at((__VA_ARGS__), 35U), \
-    impl_::ss_at((__VA_ARGS__), 36U), \
-    impl_::ss_at((__VA_ARGS__), 37U), \
-    impl_::ss_at((__VA_ARGS__), 38U), \
-    impl_::ss_at((__VA_ARGS__), 39U)  \
->
+    impl_::ss_at((__VA_ARGS__), 40U), \
+    impl_::ss_at((__VA_ARGS__), 41U), \
+    impl_::ss_at((__VA_ARGS__), 42U), \
+    impl_::ss_at((__VA_ARGS__), 43U), \
+    impl_::ss_at((__VA_ARGS__), 44U), \
+    impl_::ss_at((__VA_ARGS__), 45U), \
+    impl_::ss_at((__VA_ARGS__), 46U), \
+    impl_::ss_at((__VA_ARGS__), 47U), \
+    impl_::ss_at((__VA_ARGS__), 48U), \
+    impl_::ss_at((__VA_ARGS__), 49U), \
+    impl_::ss_at((__VA_ARGS__), 50U), \
+    impl_::ss_at((__VA_ARGS__), 51U), \
+    impl_::ss_at((__VA_ARGS__), 52U), \
+    impl_::ss_at((__VA_ARGS__), 53U), \
+    impl_::ss_at((__VA_ARGS__), 54U), \
+    impl_::ss_at((__VA_ARGS__), 55U), \
+    impl_::ss_at((__VA_ARGS__), 56U), \
+    impl_::ss_at((__VA_ARGS__), 57U), \
+    impl_::ss_at((__VA_ARGS__), 58U), \
+    impl_::ss_at((__VA_ARGS__), 59U), \
+    impl_::ss_at((__VA_ARGS__), 60U), \
+    impl_::ss_at((__VA_ARGS__), 61U), \
+    impl_::ss_at((__VA_ARGS__), 62U), \
+    impl_::ss_at((__VA_ARGS__), 63U), \
+    impl_::ss_at((__VA_ARGS__), 64U), \
+    impl_::ss_at((__VA_ARGS__), 65U), \
+    impl_::ss_at((__VA_ARGS__), 66U), \
+    impl_::ss_at((__VA_ARGS__), 67U), \
+    impl_::ss_at((__VA_ARGS__), 68U), \
+    impl_::ss_at((__VA_ARGS__), 69U), \
+    impl_::ss_at((__VA_ARGS__), 70U), \
+    impl_::ss_at((__VA_ARGS__), 71U), \
+    impl_::ss_at((__VA_ARGS__), 72U), \
+    impl_::ss_at((__VA_ARGS__), 73U), \
+    impl_::ss_at((__VA_ARGS__), 74U), \
+    impl_::ss_at((__VA_ARGS__), 75U), \
+    impl_::ss_at((__VA_ARGS__), 76U), \
+    impl_::ss_at((__VA_ARGS__), 77U), \
+    impl_::ss_at((__VA_ARGS__), 78U), \
+    impl_::ss_at((__VA_ARGS__), 79U), \
+    impl_::ss_at((__VA_ARGS__), 80U), \
+    impl_::ss_at((__VA_ARGS__), 81U), \
+    impl_::ss_at((__VA_ARGS__), 82U), \
+    impl_::ss_at((__VA_ARGS__), 83U), \
+    impl_::ss_at((__VA_ARGS__), 84U), \
+    impl_::ss_at((__VA_ARGS__), 85U), \
+    impl_::ss_at((__VA_ARGS__), 86U), \
+    impl_::ss_at((__VA_ARGS__), 87U), \
+    impl_::ss_at((__VA_ARGS__), 88U), \
+    impl_::ss_at((__VA_ARGS__), 89U), \
+    impl_::ss_at((__VA_ARGS__), 90U), \
+    impl_::ss_at((__VA_ARGS__), 91U), \
+    impl_::ss_at((__VA_ARGS__), 92U), \
+    impl_::ss_at((__VA_ARGS__), 93U), \
+    impl_::ss_at((__VA_ARGS__), 94U), \
+    impl_::ss_at((__VA_ARGS__), 95U), \
+    impl_::ss_at((__VA_ARGS__), 96U), \
+    impl_::ss_at((__VA_ARGS__), 97U), \
+    impl_::ss_at((__VA_ARGS__), 98U), \
+    impl_::ss_at((__VA_ARGS__), 99U)  \
+> \
+
