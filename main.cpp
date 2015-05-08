@@ -77,6 +77,11 @@ DEFUN(
 );
 
 
+DEFUN(
+    specForm2Function,
+    (\\ (sp) (\\ (arg) (eval (lst sp arg))))
+)
+
 int main() {
     using hello = STATIC_STRING("hello world");
     std::cerr << hello() << std::endl;
@@ -144,5 +149,7 @@ int main() {
     PRINT_RES(quote (eval $x))
 
     PRINT_RES(signed? size_t)
+
+    PRINT_RES(let (const_ (specForm2Function $const)) (const_ $size_t))
 
 }

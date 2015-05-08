@@ -31,7 +31,11 @@ struct symboltype {};
 // general case of a trait - resolves to an error
 template<class Env, class SS, class SFINAE = void>
 struct template_lisp_traits {
-    using type = error_type<env_begin, Env, env_end, SS>;
+    using type = SS;
+};
+template<class Env, class ...Elems>
+struct template_lisp_traits<Env, type_list<Elems...>> {
+    using type = error_type<env_begin, Env, env_end, Elems...>;
 };
 
 /* the actuall name resolution is an env lookup + builtin search */
@@ -189,6 +193,9 @@ MAKE_TEMPLATE_AVAILABLE_TO_LISPER(unordered_set, 1);
 
 MAKE_RENAMED_TEMPLATE_AVAILABLE_TO_LISPER(const, add_const_t);
 MAKE_RENAMED_TEMPLATE_AVAILABLE_TO_LISPER(volatile, add_volatile_t);
+MAKE_RENAMED_TEMPLATE_AVAILABLE_TO_LISPER(pointer, add_pointer_t);
+MAKE_RENAMED_TEMPLATE_AVAILABLE_TO_LISPER(lref, add_lvalue_reference_t);
+MAKE_RENAMED_TEMPLATE_AVAILABLE_TO_LISPER(rref, add_rvalue_reference_t);
 MAKE_RENAMED_TEMPLATE_AVAILABLE_TO_LISPER(unsigned, make_unsigned_t);
 MAKE_RENAMED_TEMPLATE_AVAILABLE_TO_LISPER(signed, make_signed_t);
 
