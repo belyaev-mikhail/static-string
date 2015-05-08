@@ -276,3 +276,27 @@ using ss_make_string = ss_truncate_t< static_string< Args... > >;
     impl_::ss_at((__VA_ARGS__), 199U)  \
 > \
 
+
+template<char Ch, class SS>
+struct ss_cons;
+template<char Ch, char... Rest>
+struct ss_cons<Ch, static_string<Rest...>> {
+    using type = static_string<Ch, Rest...>;
+};
+template<char Ch, class SS>
+using ss_cons_t = typename ss_cons<Ch, SS>::type;
+
+template<char Ch, class SS>
+struct ss_contains;
+template<char Ch, char... Rest>
+struct ss_contains<Ch, static_string<Ch, Rest...>> {
+    enum{ value = true };
+};
+template<char Ch, char Ch2, char... Rest>
+struct ss_contains<Ch, static_string<Ch2, Rest...>> {
+    enum{ value = ss_contains<Ch, static_string<Rest...>>::value };
+};
+template<char Ch>
+struct ss_contains<Ch, static_string<>> {
+    enum{ value = false };
+};

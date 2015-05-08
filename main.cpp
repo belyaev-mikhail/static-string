@@ -22,19 +22,59 @@ std::string typesig() {
 
 #define PRINT_RES(...) std::cerr << typesig< EVAL(__VA_ARGS__) > () << std::endl;
 
-template<class Env>
-struct template_lisp_traits<Env, STATIC_STRING("length")>
-{
-    using type = 
-        EVAL(letrec (l_ (\\ (lst) (ite (= lst nil) 0 (+ 1 (apply l_ (cdr lst)))))) l_);
+#define DEFUN(NAME, CODE) \
+template<class Env> \
+struct template_lisp_traits<Env, STATIC_STRING(#NAME)> { \
+    using type = \
+        EVAL(id CODE) ; \
 };
 
-template<class Env>
-struct template_lisp_traits<Env, STATIC_STRING("map")>
-{
-    using type = 
-        EVAL(letrec (m_ (\\ (f lst) (ite (= lst nil) nil (cons (apply f (car lst)) (apply m_ f (cdr lst)))))) m_);
-};
+DEFUN(
+    foldr, 
+    (letrec (@ (\\ (f z lst) (? (= lst nil) z (f (car lst) (@ f z (cdr lst)))))) @)
+);
+
+DEFUN(
+    foldl, 
+    (letrec (@ (\\ (f z lst) (? (= lst nil) z (@ f (f z (car lst)) (cdr lst))))) @)
+);
+
+DEFUN(fold, foldl);
+DEFUN(
+    reduce,
+    (\\ (f l) (fold f (car l) (cdr l)))
+);
+
+
+DEFUN(
+    length, 
+    (\\ (lst) (foldl (\\ (a b) (+ a 1)) 0 lst))
+);
+
+DEFUN(
+    consf,
+    (\\ (a b) (cons a b))
+);
+
+DEFUN(
+    flip,
+    (\\ (f) (\\ (a b) (f b a)))
+);
+
+DEFUN(
+    map, 
+    (\\ (f lst) (foldr (\\ (e acc) (cons (f e) acc)) nil lst))
+);
+
+DEFUN(
+    reverse, 
+    (\\ (lst) (foldl (flip consf) nil lst))
+);
+
+DEFUN(
+    list2tuple, 
+    (\\ (lst) (eval (cons $tuple lst)))
+);
 
 
 int main() {
@@ -53,10 +93,6 @@ int main() {
     std::cerr << typesig< lispIt< STATIC_STRING("(aaaa ( bbbb cccc dddd ) abcde () ) xxxx ") > >() << std::endl;
     //std::cerr << "hello" << std::endl;
 
-    NAMED_TYPE("int") i = 52;
-
-    std::cerr << typesig< NAMED_TYPE("int") >() << std::endl;
-
     std::cerr << typesig< EVAL(tuple int ( tuple char char ) double) > () << std::endl;
     std::cerr << typesig< EVAL(tuple int ( pair char char ) double) > () << std::endl;
     std::cerr << typesig< EVAL(+ 2 455 4 (- 16) (- 4 2)) > () << std::endl;
@@ -64,7 +100,6 @@ int main() {
     std::cerr << typesig< EVAL(== 3 (- 4 2)) > () << std::endl;
 
     std::cerr << typesig< EVAL(== int int32_t) > () << std::endl;
-    std::cerr << EVAL(tuple_size (pair int char))::value << std::endl;
     std::cerr << typesig< EVAL(
         ite (== int int32_t) uint32_t (+ char)
     ) > () << std::endl;
@@ -73,16 +108,6 @@ int main() {
     std::cerr << typesig< EVAL(id int) > () << std::endl;
 
     std::cerr << typesig< EVAL(== (typeof 0) long) > () << std::endl;
-
-    PRINT_RES(let (x 2) (+ x 3));
-    PRINT_RES(let ((x 3)(y 5)(z 6)) (+ x y z));
-
-    PRINT_RES(id $x)
-    PRINT_RES(eval $23)
-    PRINT_RES(quote (+ 2 3 x))
-    PRINT_RES(eval (list $eval (list $+ 2 3)))
-    PRINT_RES(eval (list $eval (quote (+ 2 3))))
-    PRINT_RES(apply (lambda (x y) (+ x y)) 2 3)
 
     PRINT_RES(let ((plus (lambda (x y) (+ x y))) (z 5)) (apply plus 2 z))
 
@@ -101,14 +126,23 @@ int main() {
 
 
     PRINT_RES(
-        letrec (f (lambda (x) (ite (== x 0) 1 (* x (apply f (- x 1)))))) (apply f 9)
+        letrec (f (lambda (x) (ite (== x 0) 1 (* x (apply f (- x 1)))))) (apply f 20)
     )
 
     PRINT_RES(
-        let (hasonly1 (lambda (lst) (== (cdr lst) (list))))
-        (apply hasonly1 (list 1 2 3 4))
+        let (hasonly1 (lambda (lst) (== (cdr lst) nil)))
+        (apply hasonly1 (lst 1 2 3 4))
     )
 
-    PRINT_RES(apply map (lambda (x) (+ x 1)) (list 1 2 3 4))
+    PRINT_RES(let ((x 2)(f (\\ (y) (+ x y)))) (apply map f (lst 1 2 3 4)))
+
+    PRINT_RES(length (lst 5 666 1 2 3 4))
+
+    PRINT_RES(reverse (lst 5 666 1 2 3 4))
+
+    PRINT_RES(list2tuple (lst 5 666 1 2 3 4))
+    PRINT_RES(quote (eval $x))
+
+    PRINT_RES(signed? size_t)
 
 }
